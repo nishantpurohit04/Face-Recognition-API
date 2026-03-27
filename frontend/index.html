@@ -1,0 +1,648 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Face Recognition</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#f0f0f5;
+  --surface:#ffffff;
+  --surface2:#f7f7fa;
+  --border:#e2e2ea;
+  --text:#18181b;
+  --muted:#71717a;
+  --hint:#a1a1aa;
+  --accent:#4f46e5;
+  --accent-light:#eef2ff;
+  --accent-hover:#4338ca;
+  --green:#16a34a;
+  --green-light:#dcfce7;
+  --red:#dc2626;
+  --red-light:#fee2e2;
+  --shadow:0 1px 3px rgba(0,0,0,.06),0 4px 16px rgba(0,0,0,.04);
+  --shadow-hover:0 4px 12px rgba(0,0,0,.08),0 16px 40px rgba(0,0,0,.06);
+  --radius:16px;
+  --radius-sm:10px;
+}
+body{font-family:'DM Sans',-apple-system,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;-webkit-font-smoothing:antialiased}
+
+/* ── Nav ─────────────────────────────────────────────────────────────────── */
+nav{
+  position:sticky;top:0;z-index:100;
+  background:rgba(240,240,245,.88);
+  backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);
+  border-bottom:1px solid var(--border);
+  padding:0 2rem;height:54px;
+  display:flex;align-items:center;justify-content:space-between;
+}
+.nav-brand{font-size:15px;font-weight:600;letter-spacing:-.3px;display:flex;align-items:center;gap:8px}
+.nav-brand-dot{width:8px;height:8px;border-radius:50%;background:var(--accent)}
+.nav-actions{display:flex;gap:6px;align-items:center}
+.nav-btn{
+  padding:6px 14px;border-radius:20px;font-size:13px;font-weight:500;
+  border:none;cursor:pointer;transition:.15s;text-decoration:none;
+  display:inline-flex;align-items:center;gap:5px;font-family:inherit;
+}
+.nav-btn-ghost{background:transparent;color:var(--muted)}
+.nav-btn-ghost:hover{background:rgba(0,0,0,.05);color:var(--text)}
+.status-chip{
+  display:inline-flex;align-items:center;gap:5px;
+  font-size:12px;font-weight:500;color:var(--green);
+  background:var(--green-light);border-radius:20px;padding:4px 10px;
+}
+.status-dot{width:6px;height:6px;border-radius:50%;background:var(--green);animation:pulse 2.5s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.5;transform:scale(.8)}}
+
+/* ── Page ────────────────────────────────────────────────────────────────── */
+.page{max-width:980px;margin:0 auto;padding:2.5rem 2rem 5rem}
+.page-header{margin-bottom:2rem}
+.page-title{font-size:28px;font-weight:600;letter-spacing:-.5px;margin-bottom:.35rem}
+.page-sub{font-size:14px;color:var(--muted)}
+
+/* ── Stats ───────────────────────────────────────────────────────────────── */
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:1.75rem}
+.stat-card{
+  background:var(--surface);border-radius:var(--radius-sm);
+  padding:1.1rem 1.4rem;box-shadow:var(--shadow);border:1px solid var(--border);
+}
+.stat-label{font-size:11px;font-weight:500;color:var(--hint);text-transform:uppercase;letter-spacing:.07em;margin-bottom:5px}
+.stat-val{font-size:26px;font-weight:600;letter-spacing:-.5px;line-height:1}
+.stat-mono{font-family:'DM Mono',monospace;font-size:18px;font-weight:500;padding-top:4px;letter-spacing:-.5px}
+.stat-sub{font-size:11px;color:var(--hint);margin-top:4px}
+
+/* ── Cards ───────────────────────────────────────────────────────────────── */
+.cards{display:grid;grid-template-columns:1fr 1fr;gap:12px;align-items:start}
+.card{
+  background:var(--surface);border-radius:var(--radius);
+  border:1px solid var(--border);box-shadow:var(--shadow);
+  overflow:hidden;transition:box-shadow .2s,transform .2s,border-color .2s;
+}
+.card:hover{box-shadow:var(--shadow-hover);transform:translateY(-1px)}
+.card.active{border-color:var(--accent);box-shadow:0 0 0 3px rgba(79,70,229,.08),var(--shadow-hover)}
+.card-head{padding:1.4rem 1.6rem 1rem;display:flex;align-items:flex-start;gap:12px;cursor:pointer;}
+.card-icon{
+  width:40px;height:40px;border-radius:10px;
+  display:flex;align-items:center;justify-content:center;font-size:20px;
+  flex-shrink:0;margin-top:1px;
+}
+.card-info{flex:1}
+.card-title{font-size:16px;font-weight:600;letter-spacing:-.2px;margin-bottom:.2rem}
+.card-desc{font-size:12px;color:var(--muted);line-height:1.5}
+.card-chevron{color:var(--hint);font-size:16px;transition:transform .25s;flex-shrink:0;margin-top:2px;line-height:1}
+.card.active .card-chevron{transform:rotate(90deg)}
+
+.card-panel{
+  display:none;padding:0 1.6rem 1.6rem;
+  animation:slidedown .2s ease;
+}
+.card-panel.open{display:block}
+/* Constrain panel content width when card expands to full grid width */
+.card.active .card-panel{ max-width:680px; }
+@keyframes slidedown{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}
+
+/* ── Upload zones ────────────────────────────────────────────────────────── */
+.upload-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px}
+.upload-zone{
+  border:1.5px dashed var(--border);border-radius:var(--radius-sm);
+  padding:1.1rem;text-align:center;cursor:pointer;transition:.15s;
+  position:relative;background:var(--surface2);
+  min-height:100px;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  overflow:hidden;
+}
+.upload-zone:hover{border-color:var(--accent);background:var(--accent-light)}
+.upload-zone.has-file{border-color:var(--accent);border-style:solid;background:var(--accent-light)}
+.upload-zone input{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
+.upload-icon{font-size:22px;margin-bottom:4px;opacity:.35;transition:.15s}
+.upload-zone:hover .upload-icon,.upload-zone.has-file .upload-icon{opacity:1}
+.upload-label{font-size:11px;color:var(--muted);font-weight:500}
+.upload-preview{max-width:100%;max-height:80px;border-radius:6px;object-fit:cover;display:none}
+.upload-name{font-size:10px;color:var(--muted);margin-top:3px;display:none;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%}
+
+/* ── Form inputs ─────────────────────────────────────────────────────────── */
+.input-field{
+  width:100%;padding:9px 13px;
+  border:1px solid var(--border);border-radius:var(--radius-sm);
+  font-size:13px;font-family:inherit;outline:none;transition:.15s;
+  background:var(--surface2);color:var(--text);margin-bottom:8px;
+}
+.input-field:focus{border-color:var(--accent);background:#fff;box-shadow:0 0 0 3px rgba(79,70,229,.1)}
+
+/* ── Buttons ─────────────────────────────────────────────────────────────── */
+.btn{
+  width:100%;padding:11px;border:none;border-radius:10px;
+  font-size:14px;font-weight:500;cursor:pointer;transition:.15s;
+  font-family:inherit;display:flex;align-items:center;justify-content:center;gap:8px;
+}
+.btn:active{transform:scale(.98)}
+.btn-primary{background:var(--accent);color:#fff}
+.btn-primary:hover{background:var(--accent-hover)}
+.btn-primary:disabled{background:var(--hint);cursor:not-allowed;transform:none}
+.spinner{
+  width:14px;height:14px;border:2px solid rgba(255,255,255,.3);
+  border-top-color:#fff;border-radius:50%;
+  animation:spin .6s linear infinite;display:none;
+}
+.btn.loading .spinner{display:block}
+.btn.loading .btn-text{display:none}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* ── Results ─────────────────────────────────────────────────────────────── */
+.result{margin-top:10px;border-radius:var(--radius-sm);padding:1.1rem;display:none;animation:fadein .2s ease}
+.result.show{display:block}
+.result.ok{background:#f0fdf4;border:1px solid #bbf7d0}
+.result.no{background:#fef2f2;border:1px solid #fecaca}
+.result.info{background:var(--accent-light);border:1px solid #c7d2fe}
+.result.warn{background:#fffbeb;border:1px solid #fde68a}
+@keyframes fadein{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+
+.result-badge{
+  display:inline-flex;align-items:center;gap:5px;
+  font-size:12px;font-weight:600;padding:3px 10px;border-radius:20px;margin-bottom:8px;
+}
+.badge-ok{background:#dcfce7;color:#15803d}
+.badge-no{background:#fee2e2;color:#b91c1c}
+.badge-info{background:#e0e7ff;color:#4338ca}
+.badge-warn{background:#fef3c7;color:#92400e}
+
+.result-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:8px}
+.r-stat{background:rgba(255,255,255,.8);border-radius:8px;padding:.65rem;text-align:center}
+.r-stat-val{font-size:18px;font-weight:600;font-family:'DM Mono',monospace;letter-spacing:-.5px}
+.r-stat-label{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-top:2px}
+
+/* ── Gallery ─────────────────────────────────────────────────────────────── */
+.gallery-list{display:flex;flex-direction:column;gap:5px;margin-top:8px}
+.gallery-item{
+  display:flex;align-items:center;padding:9px 11px;
+  background:var(--surface2);border-radius:var(--radius-sm);
+  font-size:13px;gap:10px;border:1px solid transparent;
+  transition:border-color .15s;
+}
+.gallery-item:hover{border-color:var(--border)}
+.gallery-avatar{
+  width:30px;height:30px;border-radius:50%;
+  background:var(--accent);color:#fff;
+  display:flex;align-items:center;justify-content:center;
+  font-size:11px;font-weight:700;flex-shrink:0;
+}
+.gallery-name{font-weight:500;flex:1}
+.gallery-del{
+  background:none;border:none;color:var(--hint);
+  cursor:pointer;font-size:13px;padding:4px 7px;
+  transition:.15s;border-radius:6px;margin-left:auto;
+}
+.gallery-del:hover{color:var(--red);background:var(--red-light)}
+
+/* ── Identify match ──────────────────────────────────────────────────────── */
+.identify-match{
+  display:flex;align-items:center;gap:12px;padding:.9rem;
+  background:rgba(255,255,255,.8);border-radius:var(--radius-sm);margin-top:6px;
+}
+.identify-avatar{
+  width:44px;height:44px;border-radius:50%;
+  background:var(--accent);color:#fff;
+  display:flex;align-items:center;justify-content:center;
+  font-size:16px;font-weight:700;flex-shrink:0;
+}
+.identify-name{font-size:16px;font-weight:600;letter-spacing:-.2px}
+.identify-dist{font-size:11px;color:var(--muted);margin-top:2px;font-family:'DM Mono',monospace}
+
+/* ── Face ID banner ──────────────────────────────────────────────────────── */
+.card-faceid{grid-column:1/-1}
+.faceid-inner{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:1.4rem 1.6rem;gap:1rem;
+}
+.faceid-left{display:flex;align-items:center;gap:1.1rem}
+.faceid-icon{
+  width:52px;height:52px;border-radius:14px;
+  background:#18181b;
+  display:flex;align-items:center;justify-content:center;font-size:26px;flex-shrink:0;
+}
+.faceid-title{font-size:18px;font-weight:600;letter-spacing:-.3px;margin-bottom:2px}
+.faceid-desc{font-size:12px;color:var(--muted)}
+.faceid-btn{
+  padding:9px 22px;background:var(--text);color:#fff;border:none;
+  border-radius:20px;font-size:13px;font-weight:500;cursor:pointer;transition:.15s;
+  text-decoration:none;display:inline-block;flex-shrink:0;font-family:inherit;
+}
+.faceid-btn:hover{background:#3f3f46}
+
+/* ── Network error toast ─────────────────────────────────────────────────── */
+.toast{
+  position:fixed;bottom:1.5rem;left:50%;transform:translateX(-50%) translateY(20px);
+  background:#18181b;color:#fff;padding:10px 18px;border-radius:20px;
+  font-size:13px;font-weight:500;z-index:999;
+  opacity:0;transition:opacity .25s,transform .25s;pointer-events:none;
+}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+/* ── Responsive ──────────────────────────────────────────────────────────── */
+@media(max-width:600px){
+  .cards,.upload-grid,.stats{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="nav-brand">
+    <div class="nav-brand-dot"></div>
+    FaceID
+  </div>
+  <div class="nav-actions">
+    <span class="status-chip" id="status-chip">
+      <span class="status-dot"></span>
+      <span id="status-text">Live</span>
+    </span>
+    <a href="/docs" target="_blank" class="nav-btn nav-btn-ghost">API Docs ↗</a>
+  </div>
+</nav>
+
+<div class="page">
+  <div class="page-header">
+    <div class="page-title">Face Recognition</div>
+    <div class="page-sub">ArcFace + MTCNN — running locally on your machine</div>
+  </div>
+
+  <div class="stats">
+    <div class="stat-card">
+      <div class="stat-label">Gallery</div>
+      <div class="stat-val" id="stat-gallery">—</div>
+      <div class="stat-sub">registered identities</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Model</div>
+      <div class="stat-val stat-mono">ArcFace</div>
+      <div class="stat-sub">ResNet-100 backbone</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Threshold τ</div>
+      <div class="stat-val stat-mono">0.40</div>
+      <div class="stat-sub">cosine distance cutoff</div>
+    </div>
+  </div>
+
+  <div class="cards">
+
+    <!-- Verify -->
+    <div class="card" id="card-verify">
+      <div class="card-head" onclick="toggleCard('verify')">
+        <div class="card-icon" style="background:#eef2ff">🔍</div>
+        <div class="card-info">
+          <div class="card-title">1:1 Verify</div>
+          <div class="card-desc">Are these two faces the same person?</div>
+        </div>
+        <span class="card-chevron">›</span>
+      </div>
+      <div class="card-panel" id="panel-verify">
+        <div class="upload-grid">
+          <div class="upload-zone" id="zone1">
+            <input type="file" accept="image/*" id="img1" onchange="previewUpload(this,'prev1','name1','zone1')">
+            <div class="upload-icon">🖼</div>
+            <div class="upload-label">Person A</div>
+            <img id="prev1" class="upload-preview">
+            <div class="upload-name" id="name1"></div>
+          </div>
+          <div class="upload-zone" id="zone2">
+            <input type="file" accept="image/*" id="img2" onchange="previewUpload(this,'prev2','name2','zone2')">
+            <div class="upload-icon">🖼</div>
+            <div class="upload-label">Person B</div>
+            <img id="prev2" class="upload-preview">
+            <div class="upload-name" id="name2"></div>
+          </div>
+        </div>
+        <button class="btn btn-primary" id="btn-verify" onclick="runVerify(event)">
+          <div class="spinner"></div><span class="btn-text">Compare Faces</span>
+        </button>
+        <div class="result" id="res-verify"></div>
+      </div>
+    </div>
+
+    <!-- Register -->
+    <div class="card" id="card-register">
+      <div class="card-head" onclick="toggleCard('register')">
+        <div class="card-icon" style="background:#f0fdf4">➕</div>
+        <div class="card-info">
+          <div class="card-title">Register</div>
+          <div class="card-desc">Add a new face to the gallery</div>
+        </div>
+        <span class="card-chevron">›</span>
+      </div>
+      <div class="card-panel" id="panel-register">
+        <input type="text" class="input-field" id="reg-name" placeholder="Name (e.g. Nishant)">
+        <div class="upload-zone" id="zone-reg" style="margin-bottom:8px">
+          <input type="file" accept="image/*" id="img-reg" onchange="previewUpload(this,'prev-reg','name-reg','zone-reg')">
+          <div class="upload-icon">📷</div>
+          <div class="upload-label">Upload a clear face photo</div>
+          <img id="prev-reg" class="upload-preview">
+          <div class="upload-name" id="name-reg"></div>
+        </div>
+        <button class="btn btn-primary" id="btn-register" onclick="runRegister(event)">
+          <div class="spinner"></div><span class="btn-text">Register Face</span>
+        </button>
+        <div class="result" id="res-register"></div>
+      </div>
+    </div>
+
+    <!-- Identify -->
+    <div class="card" id="card-identify">
+      <div class="card-head" onclick="toggleCard('identify')">
+        <div class="card-icon" style="background:#fff7ed">👤</div>
+        <div class="card-info">
+          <div class="card-title">1:N Identify</div>
+          <div class="card-desc">Who is this person from the gallery?</div>
+        </div>
+        <span class="card-chevron">›</span>
+      </div>
+      <div class="card-panel" id="panel-identify">
+        <div class="upload-zone" id="zone-id" style="margin-bottom:8px">
+          <input type="file" accept="image/*" id="img-id" onchange="previewUpload(this,'prev-id','name-id','zone-id')">
+          <div class="upload-icon">🔎</div>
+          <div class="upload-label">Upload the face to identify</div>
+          <img id="prev-id" class="upload-preview">
+          <div class="upload-name" id="name-id"></div>
+        </div>
+        <button class="btn btn-primary" id="btn-identify" onclick="runIdentify(event)">
+          <div class="spinner"></div><span class="btn-text">Identify Person</span>
+        </button>
+        <div class="result" id="res-identify"></div>
+      </div>
+    </div>
+
+    <!-- Gallery -->
+    <div class="card" id="card-gallery">
+      <div class="card-head" onclick="toggleCard('gallery')">
+        <div class="card-icon" style="background:#faf5ff">🗂</div>
+        <div class="card-info">
+          <div class="card-title">Gallery</div>
+          <div class="card-desc">View and manage registered identities</div>
+        </div>
+        <span class="card-chevron">›</span>
+      </div>
+      <div class="card-panel" id="panel-gallery">
+        <div id="gallery-content">
+          <div style="text-align:center;padding:1rem;color:var(--hint);font-size:13px">Loading…</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Face ID -->
+    <div class="card card-faceid">
+      <div class="faceid-inner">
+        <div class="faceid-left">
+          <div class="faceid-icon">🔒</div>
+          <div>
+            <div class="faceid-title">Face ID Demo</div>
+            <div class="faceid-desc">iPhone-style face lock — enroll in 5 angles, unlock with a look</div>
+          </div>
+        </div>
+        <a href="/face-id" class="faceid-btn">Open →</a>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- Toast notification -->
+<div class="toast" id="toast"></div>
+
+<script>
+const API = '';
+
+/* ── Object URL registry — prevents memory leaks from preview blobs ──────── */
+const _objectUrls = {};
+function setPreviewUrl(imgEl, file) {
+  const id = imgEl.id;
+  if (_objectUrls[id]) URL.revokeObjectURL(_objectUrls[id]);
+  const url = URL.createObjectURL(file);
+  _objectUrls[id] = url;
+  imgEl.src = url;
+}
+
+/* ── Toast ───────────────────────────────────────────────────────────────── */
+let _toastTimer;
+function showToast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(_toastTimer);
+  _toastTimer = setTimeout(() => el.classList.remove('show'), 3000);
+}
+
+/* ── Card toggling ───────────────────────────────────────────────────────── */
+function toggleCard(id) {
+  const panel = document.getElementById('panel-' + id);
+  const card  = document.getElementById('card-' + id);
+  const isOpen = panel.classList.contains('open');
+
+  // Close all cards and remove full-width span
+  document.querySelectorAll('.card-panel').forEach(p => p.classList.remove('open'));
+  document.querySelectorAll('.card').forEach(c => {
+    c.classList.remove('active');
+    c.style.gridColumn = '';
+  });
+
+  if (!isOpen) {
+    panel.classList.add('open');
+    card.classList.add('active');
+    card.style.gridColumn = '1 / -1';
+    if (id === 'gallery') loadGallery();
+  }
+}
+
+/* ── Upload preview ──────────────────────────────────────────────────────── */
+function previewUpload(input, imgId, nameId, zoneId) {
+  const file = input.files[0];
+  if (!file) return;
+  const img  = document.getElementById(imgId);
+  const name = document.getElementById(nameId);
+  const zone = document.getElementById(zoneId);
+
+  // Reset first in case a second file is selected
+  img.style.display  = 'none';
+  name.style.display = 'none';
+  zone.querySelector('.upload-icon').style.display  = '';
+  zone.querySelector('.upload-label').style.display = '';
+
+  setPreviewUrl(img, file);
+  img.style.display  = 'block';
+  name.textContent   = file.name;
+  name.style.display = 'block';
+  zone.querySelector('.upload-icon').style.display  = 'none';
+  zone.querySelector('.upload-label').style.display = 'none';
+  zone.classList.add('has-file');
+}
+
+/* ── Button loading state ────────────────────────────────────────────────── */
+function setLoading(id, on) {
+  const b = document.getElementById(id);
+  b.disabled = on;
+  b.classList.toggle('loading', on);
+}
+
+/* ── Show result ─────────────────────────────────────────────────────────── */
+function showResult(id, html, type = 'info') {
+  const el = document.getElementById(id);
+  el.innerHTML = html;
+  el.className = `result show ${type}`;
+}
+
+/* ── Verify ──────────────────────────────────────────────────────────────── */
+async function runVerify(e) {
+  e.stopPropagation();
+  const f1 = document.getElementById('img1').files[0];
+  const f2 = document.getElementById('img2').files[0];
+  if (!f1 || !f2) {
+    return showResult('res-verify', '<div style="font-size:13px;color:var(--muted)">Upload both images first.</div>', 'info');
+  }
+  setLoading('btn-verify', true);
+  try {
+    const fd = new FormData();
+    fd.append('image1', f1);
+    fd.append('image2', f2);
+    const r = await fetch(API + '/verify', { method: 'POST', body: fd });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.detail || 'Error');
+    const ok  = d.verified;
+    const sim = Math.max(0, (1 - d.distance) * 100).toFixed(1);
+    showResult('res-verify', `
+      <div class="result-badge ${ok ? 'badge-ok' : 'badge-no'}">${ok ? '✓ Match' : '✕ No Match'}</div>
+      <div class="result-stats">
+        <div class="r-stat"><div class="r-stat-val">${d.distance.toFixed(3)}</div><div class="r-stat-label">Distance</div></div>
+        <div class="r-stat"><div class="r-stat-val">${d.threshold.toFixed(2)}</div><div class="r-stat-label">Threshold</div></div>
+        <div class="r-stat"><div class="r-stat-val">${sim}%</div><div class="r-stat-label">Similarity</div></div>
+      </div>`, ok ? 'ok' : 'no');
+  } catch (err) {
+    if (err.name === 'TypeError') showToast('Network error — is the server running?');
+    showResult('res-verify', `<div style="font-size:13px;color:var(--red)">${err.message}</div>`, 'no');
+  } finally {
+    setLoading('btn-verify', false);
+  }
+}
+
+/* ── Register ────────────────────────────────────────────────────────────── */
+async function runRegister(e) {
+  e.stopPropagation();
+  const name = document.getElementById('reg-name').value.trim();
+  const file = document.getElementById('img-reg').files[0];
+  if (!name || !file) {
+    return showResult('res-register', '<div style="font-size:13px;color:var(--muted)">Enter a name and upload a photo.</div>', 'info');
+  }
+  setLoading('btn-register', true);
+  try {
+    const fd = new FormData();
+    fd.append('image', file);
+    fd.append('name', name);
+    const r = await fetch(API + '/register', { method: 'POST', body: fd });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.detail || 'Error');
+    showResult('res-register', `
+      <div class="result-badge badge-ok">✓ Registered</div>
+      <div style="font-size:13px;margin-top:4px">${d.message}</div>`, 'ok');
+    loadStats();
+  } catch (err) {
+    if (err.name === 'TypeError') showToast('Network error — is the server running?');
+    showResult('res-register', `<div style="font-size:13px;color:var(--red)">${err.message}</div>`, 'no');
+  } finally {
+    setLoading('btn-register', false);
+  }
+}
+
+/* ── Identify ────────────────────────────────────────────────────────────── */
+async function runIdentify(e) {
+  e.stopPropagation();
+  const file = document.getElementById('img-id').files[0];
+  if (!file) {
+    return showResult('res-identify', '<div style="font-size:13px;color:var(--muted)">Upload a face photo first.</div>', 'info');
+  }
+  setLoading('btn-identify', true);
+  try {
+    const fd = new FormData();
+    fd.append('image', file);
+    const r = await fetch(API + '/identify', { method: 'POST', body: fd });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.detail || 'Error');
+    const best = d.best_match;
+    if (best) {
+      const init = best.identity.slice(0, 2).toUpperCase();
+      showResult('res-identify', `
+        <div class="result-badge badge-ok">✓ Found</div>
+        <div class="identify-match">
+          <div class="identify-avatar">${init}</div>
+          <div>
+            <div class="identify-name">${best.identity}</div>
+            <div class="identify-dist">dist: ${best.distance.toFixed(3)} · ${d.gallery_size} identities searched</div>
+          </div>
+        </div>`, 'ok');
+    } else {
+      showResult('res-identify', `
+        <div class="result-badge badge-no">✕ Unknown</div>
+        <div style="font-size:13px;margin-top:4px;color:var(--muted)">No match across ${d.gallery_size} identities.</div>`, 'no');
+    }
+  } catch (err) {
+    if (err.name === 'TypeError') showToast('Network error — is the server running?');
+    showResult('res-identify', `<div style="font-size:13px;color:var(--red)">${err.message}</div>`, 'no');
+  } finally {
+    setLoading('btn-identify', false);
+  }
+}
+
+/* ── Gallery ─────────────────────────────────────────────────────────────── */
+async function loadGallery() {
+  const el = document.getElementById('gallery-content');
+  el.innerHTML = '<div style="text-align:center;padding:1rem;color:var(--hint);font-size:13px">Loading…</div>';
+  try {
+    const r = await fetch(API + '/gallery');
+    const d = await r.json();
+    if (d.count === 0) {
+      el.innerHTML = `<div style="text-align:center;padding:1.5rem;color:var(--hint);font-size:13px">No identities registered yet.</div>`;
+      return;
+    }
+    el.innerHTML = `
+      <div style="font-size:11px;color:var(--muted);margin-bottom:8px;font-weight:500;text-transform:uppercase;letter-spacing:.05em">${d.count} registered</div>
+      <div class="gallery-list">
+        ${d.identities.map(n => `
+          <div class="gallery-item">
+            <div class="gallery-avatar">${n.slice(0, 2).toUpperCase()}</div>
+            <div class="gallery-name">${n}</div>
+            <button class="gallery-del" onclick="deleteIdentity('${n}', event)" title="Remove">✕</button>
+          </div>`).join('')}
+      </div>`;
+  } catch (e) {
+    el.innerHTML = `<div style="color:var(--red);font-size:13px">Could not load gallery. Is the server running?</div>`;
+  }
+}
+
+async function deleteIdentity(name, e) {
+  e.stopPropagation();
+  if (!confirm(`Remove "${name}" from gallery?`)) return;
+  try {
+    const r = await fetch(API + `/gallery/${name}`, { method: 'DELETE' });
+    if (!r.ok) throw new Error();
+    loadGallery();
+    loadStats();
+  } catch {
+    showToast(`Failed to delete "${name}"`);
+  }
+}
+
+/* ── Stats ───────────────────────────────────────────────────────────────── */
+async function loadStats() {
+  try {
+    const r = await fetch(API + '/gallery');
+    if (!r.ok) throw new Error();
+    const d = await r.json();
+    document.getElementById('stat-gallery').textContent = d.count;
+  } catch {
+    document.getElementById('stat-gallery').textContent = '—';
+  }
+}
+
+loadStats();
+</script>
+</body>
+</html>
